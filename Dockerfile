@@ -12,11 +12,10 @@ COPY crawler.py .
 # 暴露端口
 EXPOSE 8000
 
-# 启动服务（使用 Gunicorn + Uvicorn Workers）
-CMD ["gunicorn", "crawler:app", \
+# 启动服务（使用 Uvicorn 多进程模式）
+CMD ["uvicorn", "crawler:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
      "--workers", "4", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "30", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+     "--log-level", "info", \
+     "--access-log"]
