@@ -47,6 +47,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override server-side concurrency level (>=1)",
     )
+    parser.add_argument(
+        "--to-markdown",
+        action="store_true",
+        default=True,
+        help="Convert HTML to Markdown format (default: True)",
+    )
+    parser.add_argument(
+        "--no-markdown",
+        dest="to_markdown",
+        action="store_false",
+        help="Disable Markdown conversion, return plain text only",
+    )
     return parser
 
 
@@ -55,8 +67,9 @@ async def fetch(
     urls: Sequence[str],
     timeout: float,
     concurrency: Optional[int],
+    to_markdown: bool = True,
 ) -> None:
-    payload = {"urls": list(urls), "timeout": timeout}
+    payload = {"urls": list(urls), "timeout": timeout, "to_markdown": to_markdown}
     if concurrency is not None:
         payload["concurrency"] = concurrency
 
@@ -68,7 +81,7 @@ async def fetch(
 
 
 async def async_main(args: argparse.Namespace) -> None:
-    await fetch(args.endpoint, args.urls, args.timeout, args.concurrency)
+    await fetch(args.endpoint, args.urls, args.timeout, args.concurrency, args.to_markdown)
 
 
 def main() -> None:

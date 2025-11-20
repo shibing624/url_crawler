@@ -230,11 +230,11 @@ server {
 - `urls` (必需): URL 列表，最多 64 个
 - `timeout` (可选): 超时时间（秒），默认 15.0，范围 1-60
 - `concurrency` (可选): 并发数，默认 10，最大 64
-- `to_markdown` (可选): 是否转换为 Markdown 格式，默认 `false`
+- `to_markdown` (可选): 是否转换为 Markdown 格式，**默认 `true`**
 
 **请求示例**：
 
-1. 基本用法（返回纯文本）：
+1. 基本用法（返回 Markdown + 纯文本）：
   ```json
   {
     "urls": ["https://example.com", "https://www.python.org"],
@@ -242,12 +242,20 @@ server {
   }
   ```
 
-2. 转换为 Markdown（推荐用于 RAG/LLM）：
+2. 只返回纯文本（禁用 Markdown）：
+  ```json
+  {
+    "urls": ["https://example.com"],
+    "timeout": 15.0,
+    "to_markdown": false
+  }
+  ```
+
+3. Wikipedia 示例（自动优化）：
   ```json
   {
     "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
-    "timeout": 15.0,
-    "to_markdown": true
+    "timeout": 15.0
   }
   ```
 
@@ -286,7 +294,7 @@ server {
 
 **字段说明**：
 - `text`: 提取的纯文本内容（始终返回）
-- `markdown`: Markdown 格式内容（仅当 `to_markdown=true` 时返回）
+- `markdown`: Markdown 格式内容（**默认返回**，可通过 `to_markdown=false` 禁用）
 - `bytes_downloaded`: 下载的字节数
 - `elapsed_ms`: 单个请求耗时（毫秒）
 
@@ -327,15 +335,25 @@ curl -X POST http://127.0.0.1:8000/fetch \
   }'
 ```
 
-**转换为 Markdown（适合 RAG/LLM）**：
+**转换为 Markdown（默认行为）**：
 ```bash
 curl -X POST http://127.0.0.1:8000/fetch \
   -H "Content-Type: application/json" \
   -d '{
     "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
-    "timeout": 20.0,
-    "to_markdown": true
+    "timeout": 20.0
   }' | jq -r '.results[0].markdown'
+```
+
+**禁用 Markdown，只返回纯文本**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com"],
+    "timeout": 15.0,
+    "to_markdown": false
+  }'
 ```
 
 **格式化输出（使用 jq）**：
@@ -362,21 +380,30 @@ curl -X POST http://127.0.0.1:8000/fetch \
 
 `demo.py` 提供了一个命令行示例：
 ```bash
+# 默认返回 Markdown
 python demo.py \
   --urls https://example.com https://www.python.org \
   --timeout 12 \
   --concurrency 32
+
+# 禁用 Markdown，只返回纯文本
+python demo.py \
+  --urls https://example.com \
+  --no-markdown
 ```
 
 ### Shell 脚本客户端（最简单）
 
-使用 `fetch.sh` 快速抓取：
+使用 `fetch.sh` 快速抓取（默认返回 Markdown）：
 ```bash
 # 抓取单个 URL
 ./fetch.sh https://example.com
 
 # 抓取多个 URL
 ./fetch.sh https://example.com https://www.python.org https://github.com
+
+# 禁用 Markdown
+CRAWLER_TO_MARKDOWN=false ./fetch.sh https://example.com
 
 # 自定义配置（通过环境变量）
 CRAWLER_TIMEOUT=20 CRAWLER_CONCURRENCY=20 ./fetch.sh https://example.com

@@ -73,7 +73,7 @@ class FetchRequest:
     urls: List[str]
     timeout: float = 15.0
     concurrency: Optional[int] = None
-    to_markdown: bool = False
+    to_markdown: bool = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.urls, (list, tuple)):
@@ -197,7 +197,7 @@ async def fetch_single(
     url: str,
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
-    to_markdown: bool = False,
+    to_markdown: bool = True,
 ) -> FetchResult:
     """Fetch a single URL and return structured data.
     

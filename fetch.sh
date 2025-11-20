@@ -6,6 +6,7 @@
 ENDPOINT="${CRAWLER_ENDPOINT:-http://127.0.0.1:8000/fetch}"
 TIMEOUT="${CRAWLER_TIMEOUT:-15.0}"
 CONCURRENCY="${CRAWLER_CONCURRENCY:-10}"
+TO_MARKDOWN="${CRAWLER_TO_MARKDOWN:-true}"
 
 # 检查参数
 if [ $# -eq 0 ]; then
@@ -16,9 +17,10 @@ if [ $# -eq 0 ]; then
     echo "  $0 https://example.com https://www.python.org"
     echo ""
     echo "环境变量:"
-    echo "  CRAWLER_ENDPOINT    - 服务端点 (默认: http://127.0.0.1:8000/fetch)"
-    echo "  CRAWLER_TIMEOUT     - 超时秒数 (默认: 15.0)"
-    echo "  CRAWLER_CONCURRENCY - 并发数 (默认: 10)"
+    echo "  CRAWLER_ENDPOINT     - 服务端点 (默认: http://127.0.0.1:8000/fetch)"
+    echo "  CRAWLER_TIMEOUT      - 超时秒数 (默认: 15.0)"
+    echo "  CRAWLER_CONCURRENCY  - 并发数 (默认: 10)"
+    echo "  CRAWLER_TO_MARKDOWN  - 转换为Markdown (默认: true)"
     exit 1
 fi
 
@@ -33,10 +35,10 @@ for url in "$@"; do
 done
 
 # 构建 JSON payload
-JSON_DATA="{\"urls\": [$URLS], \"timeout\": $TIMEOUT, \"concurrency\": $CONCURRENCY}"
+JSON_DATA="{\"urls\": [$URLS], \"timeout\": $TIMEOUT, \"concurrency\": $CONCURRENCY, \"to_markdown\": $TO_MARKDOWN}"
 
 # 发送请求
-echo "正在抓取 $# 个 URL..."
+echo "正在抓取 $# 个 URL (Markdown: $TO_MARKDOWN)..."
 curl -X POST "$ENDPOINT" \
   -H "Content-Type: application/json" \
   -d "$JSON_DATA" \
