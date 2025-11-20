@@ -121,8 +121,7 @@ class FetchResult:
     ok: bool
     status_code: Optional[int] = None
     charset: Optional[str] = None
-    text: Optional[str] = None
-    markdown: Optional[str] = None
+    content: Optional[str] = None
     error: Optional[str] = None
     bytes_downloaded: Optional[int] = None
     elapsed_ms: Optional[int] = None
@@ -205,10 +204,10 @@ async def fetch_single(
         url: Target URL to fetch
         client: HTTP client instance
         semaphore: Concurrency control semaphore
-        to_markdown: If True, convert HTML to Markdown format
+        to_markdown: If True, convert HTML to Markdown format; otherwise return plain text
         
     Returns:
-        FetchResult with extracted content
+        FetchResult with extracted content (either Markdown or plain text)
     """
 
     result = FetchResult(url=url, ok=False)
@@ -228,12 +227,11 @@ async def fetch_single(
             content = response.content[:MAX_BODY_BYTES]
             html_content = content.decode(response.encoding or "utf-8", errors="replace")
             
-            # Extract plain text
-            result.text = extract_readable_text(html_content)
-            
-            # Convert to markdown if requested
+            # Convert to markdown or extract plain text based on to_markdown flag
             if to_markdown:
-                result.markdown = parse_html_to_markdown(html_content, url)
+                result.content = parse_html_to_markdown(html_content, url)
+            else:
+                result.content = extract_readable_text(html_content)
 
             result.ok = True
         except httpx.TimeoutException as exc:

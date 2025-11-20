@@ -271,8 +271,7 @@ server {
         "ok": true,
         "status_code": 200,
         "charset": "utf-8",
-        "text": "Example Domain...",
-        "markdown": "# Example Domain\n\n...",
+        "content": "# Example Domain\n\nThis domain is for use in illustrative examples...",
         "error": null,
         "bytes_downloaded": 1234,
         "elapsed_ms": 567
@@ -282,8 +281,7 @@ server {
         "ok": false,
         "status_code": 403,
         "charset": null,
-        "text": null,
-        "markdown": null,
+        "content": null,
         "error": "403 Client Error: Forbidden for url",
         "bytes_downloaded": null,
         "elapsed_ms": 234
@@ -293,8 +291,9 @@ server {
   ```
 
 **字段说明**：
-- `text`: 提取的纯文本内容（始终返回）
-- `markdown`: Markdown 格式内容（**默认返回**，可通过 `to_markdown=false` 禁用）
+- `content`: 提取的内容（Markdown 格式或纯文本，取决于 `to_markdown` 参数）
+  - 当 `to_markdown=true`（默认）：返回 Markdown 格式
+  - 当 `to_markdown=false`：返回纯文本格式
 - `bytes_downloaded`: 下载的字节数
 - `elapsed_ms`: 单个请求耗时（毫秒）
 
@@ -342,7 +341,7 @@ curl -X POST http://127.0.0.1:8000/fetch \
   -d '{
     "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
     "timeout": 20.0
-  }' | jq -r '.results[0].markdown'
+  }' | jq -r '.results[0].content'
 ```
 
 **禁用 Markdown，只返回纯文本**：
@@ -353,7 +352,7 @@ curl -X POST http://127.0.0.1:8000/fetch \
     "urls": ["https://example.com"],
     "timeout": 15.0,
     "to_markdown": false
-  }'
+  }' | jq -r '.results[0].content'
 ```
 
 **格式化输出（使用 jq）**：
