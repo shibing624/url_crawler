@@ -123,14 +123,6 @@ docker logs -f url-crawler
   }
   ```
 
-3. Wikipedia 示例（自动优化）：
-  ```json
-  {
-    "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
-    "timeout": 15.0
-  }
-  ```
-
 **响应体**：
   ```json
   {
@@ -257,17 +249,8 @@ python demo.py \
 
 使用 `fetch.sh` 快速抓取（默认返回 Markdown）：
 ```bash
-# 抓取单个 URL
-./fetch.sh https://example.com
-
 # 抓取多个 URL
-./fetch.sh https://example.com https://www.python.org https://github.com
-
-# 禁用 Markdown
-CRAWLER_TO_MARKDOWN=false ./fetch.sh https://example.com
-
-# 自定义配置（通过环境变量）
-CRAWLER_TIMEOUT=20 CRAWLER_CONCURRENCY=20 ./fetch.sh https://example.com
+./fetch.sh
 ```
 
 ## 目录结构
