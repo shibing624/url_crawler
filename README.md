@@ -66,32 +66,6 @@ gunicorn crawler:app \
 ```
 
 **使用配置文件** `gunicorn_config.py`：
-```python
-# gunicorn_config.py
-import multiprocessing
-
-# 服务器绑定
-bind = "0.0.0.0:8000"
-
-# Worker 配置
-workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "uvicorn.workers.UvicornWorker"
-
-# 超时设置
-timeout = 30
-keepalive = 5
-
-# 日志配置
-accesslog = "-"  # 输出到 stdout
-errorlog = "-"   # 输出到 stderr
-loglevel = "info"
-
-# 进程命名
-proc_name = "url_crawler"
-
-# 优雅重启
-graceful_timeout = 30
-```
 
 启动命令：
 ```bash
@@ -119,82 +93,6 @@ docker run -d \
 **查看日志**：
 ```bash
 docker logs -f url-crawler
-```
-
-#### 方案 4：Systemd 服务管理
-
-创建服务文件 `/etc/systemd/system/url-crawler.service`：
-```ini
-[Unit]
-Description=URL Crawler Service
-After=network.target
-
-[Service]
-Type=notify
-User=www-data
-Group=www-data
-WorkingDirectory=/opt/url_crawler
-Environment="PATH=/opt/url_crawler/venv/bin"
-ExecStart=/opt/url_crawler/venv/bin/gunicorn crawler:app \
-          --workers 4 \
-          --worker-class uvicorn.workers.UvicornWorker \
-          --bind 0.0.0.0:8000 \
-          --timeout 30
-ExecReload=/bin/kill -s HUP $MAINPID
-KillMode=mixed
-TimeoutStopSec=30
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-管理命令：
-```bash
-# 启动服务
-sudo systemctl start url-crawler
-
-# 开机自启
-sudo systemctl enable url-crawler
-
-# 查看状态
-sudo systemctl status url-crawler
-
-# 重启服务
-sudo systemctl restart url-crawler
-
-# 查看日志
-sudo journalctl -u url-crawler -f
-```
-
-### 反向代理配置（可选）
-
-建议在 Uvicorn/Gunicorn 前部署 Nginx 或 Caddy，提供 TLS、限流、缓存等功能。
-
-**Nginx 配置示例**：
-```nginx
-upstream url_crawler {
-    server 127.0.0.1:8000;
-}
-
-server {
-    listen 80;
-    server_name crawler.example.com;
-
-    location / {
-        proxy_pass http://url_crawler;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # 超时设置
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-    }
-}
 ```
 
 ## API 说明
@@ -315,7 +213,7 @@ curl -X POST http://127.0.0.1:8000/fetch \
   -d '{
     "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
     "timeout": 20.0
-  }' | jq -r '.results[0].content'
+  }'
 ```
 
 **禁用 Markdown，只返回纯文本**：
@@ -326,17 +224,7 @@ curl -X POST http://127.0.0.1:8000/fetch \
     "urls": ["https://example.com"],
     "timeout": 15.0,
     "to_markdown": false
-  }' | jq -r '.results[0].content'
-```
-
-**格式化输出（使用 jq）**：
-```bash
-curl -X POST http://127.0.0.1:8000/fetch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "urls": ["https://example.com"],
-    "timeout": 15.0
-  }' | jq .
+  }'
 ```
 
 **保存结果到文件**：

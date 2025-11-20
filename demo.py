@@ -8,6 +8,12 @@ Run the FastAPI service first:
 
 Then execute this script:
     python demo.py --urls https://example.com https://www.python.org --timeout 12 --concurrency 32
+
+    # 默认返回 Markdown（推荐）
+    python demo.py --urls https://example.com
+
+    # 明确禁用 Markdown，返回纯文本
+    python demo.py --urls https://example.com --no-markdown
 """
 from __future__ import annotations
 
@@ -48,15 +54,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override server-side concurrency level (>=1)",
     )
     parser.add_argument(
-        "--to-markdown",
-        action="store_true",
-        default=True,
-        help="Convert HTML to Markdown format (default: True)",
-    )
-    parser.add_argument(
         "--no-markdown",
-        dest="to_markdown",
-        action="store_false",
+        action="store_true",
+        default=False,
         help="Disable Markdown conversion, return plain text only",
     )
     return parser
@@ -81,7 +81,9 @@ async def fetch(
 
 
 async def async_main(args: argparse.Namespace) -> None:
-    await fetch(args.endpoint, args.urls, args.timeout, args.concurrency, args.to_markdown)
+    # Default to markdown unless --no-markdown is explicitly passed
+    to_markdown = not args.no_markdown
+    await fetch(args.endpoint, args.urls, args.timeout, args.concurrency, to_markdown)
 
 
 def main() -> None:
