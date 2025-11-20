@@ -5,8 +5,9 @@ url网页批量抓取工具。
 
 ## 功能亮点
 - 限流 + 超时：默认并发 10、单个请求 15s，可通过环境变量调整（最大并发可达 64+），有效保护外部服务。
+- **Markdown 转换**：支持将 HTML 转换为 Markdown 格式，特别优化 Wikipedia 页面，适合 RAG/LLM 应用。
 - 文本抽取：使用 BeautifulSoup 去除 `script/style/noscript` 等噪声节点，仅输出纯文本。
-- 结构化响应：逐条记录 `ok` 状态、`status_code`、`charset`、`text`、`bytes_downloaded`、`elapsed_ms` 与错误信息，方便追踪。
+- 结构化响应：逐条记录 `ok` 状态、`status_code`、`charset`、`text`、`markdown`、`bytes_downloaded`、`elapsed_ms` 与错误信息，方便追踪。
 - 健康检查：`/health` 端点可用于探活与运维监控。
 - 多种部署方式：支持 Uvicorn、Gunicorn、Docker、Systemd 等多种生产部署方案。
 
@@ -224,17 +225,38 @@ server {
 
 ## API 说明
 ### `POST /fetch`
-- 请求体
+
+**请求参数**：
+- `urls` (必需): URL 列表，最多 64 个
+- `timeout` (可选): 超时时间（秒），默认 15.0，范围 1-60
+- `concurrency` (可选): 并发数，默认 10，最大 64
+- `to_markdown` (可选): 是否转换为 Markdown 格式，默认 `false`
+
+**请求示例**：
+
+1. 基本用法（返回纯文本）：
   ```json
   {
     "urls": ["https://example.com", "https://www.python.org"],
     "timeout": 15.0
   }
   ```
-- 响应体
+
+2. 转换为 Markdown（推荐用于 RAG/LLM）：
+  ```json
+  {
+    "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
+    "timeout": 15.0,
+    "to_markdown": true
+  }
+  ```
+
+**响应体**：
   ```json
   {
     "total": 2,
+    "concurrency": 10,
+    "elapsed_ms": 1234,
     "results": [
       {
         "url": "https://example.com",
@@ -242,7 +264,10 @@ server {
         "status_code": 200,
         "charset": "utf-8",
         "text": "Example Domain...",
-        "error": null
+        "markdown": "# Example Domain\n\n...",
+        "error": null,
+        "bytes_downloaded": 1234,
+        "elapsed_ms": 567
       },
       {
         "url": "https://www.python.org",
@@ -250,11 +275,20 @@ server {
         "status_code": 403,
         "charset": null,
         "text": null,
-        "error": "403 Client Error: Forbidden for url"
+        "markdown": null,
+        "error": "403 Client Error: Forbidden for url",
+        "bytes_downloaded": null,
+        "elapsed_ms": 234
       }
     ]
   }
   ```
+
+**字段说明**：
+- `text`: 提取的纯文本内容（始终返回）
+- `markdown`: Markdown 格式内容（仅当 `to_markdown=true` 时返回）
+- `bytes_downloaded`: 下载的字节数
+- `elapsed_ms`: 单个请求耗时（毫秒）
 
 ### `GET /health`
 返回 `{ "status": "ok" }`，可用于健康检查。
@@ -291,6 +325,17 @@ curl -X POST http://127.0.0.1:8000/fetch \
     "timeout": 15.0,
     "concurrency": 10
   }'
+```
+
+**转换为 Markdown（适合 RAG/LLM）**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://en.wikipedia.org/wiki/Python_(programming_language)"],
+    "timeout": 20.0,
+    "to_markdown": true
+  }' | jq -r '.results[0].markdown'
 ```
 
 **格式化输出（使用 jq）**：

@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from dataclasses import asdict, dataclass
 from time import perf_counter
 from typing import List, Optional
@@ -20,6 +21,7 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import Body, FastAPI, HTTPException
+from markdownify import MarkdownConverter
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -71,6 +73,7 @@ class FetchRequest:
     urls: List[str]
     timeout: float = 15.0
     concurrency: Optional[int] = None
+    to_markdown: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.urls, (list, tuple)):
@@ -119,6 +122,7 @@ class FetchResult:
     status_code: Optional[int] = None
     charset: Optional[str] = None
     text: Optional[str] = None
+    markdown: Optional[str] = None
     error: Optional[str] = None
     bytes_downloaded: Optional[int] = None
     elapsed_ms: Optional[int] = None
@@ -144,12 +148,68 @@ def extract_readable_text(html: str) -> str:
     return "\n".join(cleaned_lines)
 
 
+def parse_html_to_markdown(html: str, url: str) -> str:
+    """Parse HTML to markdown format.
+    
+    Args:
+        html: HTML content to convert
+        url: Source URL (used for special handling of Wikipedia pages)
+        
+    Returns:
+        Markdown formatted text
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    title = soup.title.string if soup.title else "No Title"
+    
+    # Remove javascript, style blocks, and hyperlinks
+    for element in soup(["script", "style", "noscript"]):
+        element.decompose()
+    
+    # Remove other common irrelevant elements
+    for element in soup.find_all(["nav", "footer", "aside", "form", "figure", "header"]):
+        element.decompose()
+    
+    # Special handling for Wikipedia pages
+    if "wikipedia.org" in url:
+        body_elm = soup.find("div", {"id": "mw-content-text"})
+        title_elm = soup.find("span", {"class": "mw-page-title-main"})
+        
+        if body_elm:
+            main_title = title_elm.string if title_elm else title
+            webpage_text = f"# {main_title}\n\n" + MarkdownConverter().convert_soup(body_elm)
+        else:
+            webpage_text = MarkdownConverter().convert_soup(soup)
+    else:
+        webpage_text = MarkdownConverter().convert_soup(soup)
+    
+    # Clean up excessive newlines
+    webpage_text = re.sub(r"\r\n", "\n", webpage_text)
+    webpage_text = re.sub(r"\n{2,}", "\n\n", webpage_text).strip()
+    
+    # Add title if not already present
+    if not webpage_text.startswith("# "):
+        webpage_text = f"# {title}\n\n{webpage_text}"
+    
+    return webpage_text
+
+
 async def fetch_single(
     url: str,
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
+    to_markdown: bool = False,
 ) -> FetchResult:
-    """Fetch a single URL and return structured data."""
+    """Fetch a single URL and return structured data.
+    
+    Args:
+        url: Target URL to fetch
+        client: HTTP client instance
+        semaphore: Concurrency control semaphore
+        to_markdown: If True, convert HTML to Markdown format
+        
+    Returns:
+        FetchResult with extracted content
+    """
 
     result = FetchResult(url=url, ok=False)
     started = perf_counter()
@@ -166,11 +226,15 @@ async def fetch_single(
 
             result.bytes_downloaded = len(response.content)
             content = response.content[:MAX_BODY_BYTES]
-            text = extract_readable_text(
-                content.decode(response.encoding or "utf-8", errors="replace")
-            )
+            html_content = content.decode(response.encoding or "utf-8", errors="replace")
+            
+            # Extract plain text
+            result.text = extract_readable_text(html_content)
+            
+            # Convert to markdown if requested
+            if to_markdown:
+                result.markdown = parse_html_to_markdown(html_content, url)
 
-            result.text = text
             result.ok = True
         except httpx.TimeoutException as exc:
             result.error = f"timeout: {exc}"
@@ -233,7 +297,10 @@ async def fetch_urls(payload: dict = Body(...)) -> dict:
         follow_redirects=True,
         limits=limits,
     ) as client:
-        tasks = [fetch_single(url, client, semaphore) for url in request.urls]
+        tasks = [
+            fetch_single(url, client, semaphore, request.to_markdown)
+            for url in request.urls
+        ]
         results = await asyncio.gather(*tasks)
 
     elapsed_ms = int((perf_counter() - start_time) * 1000)
