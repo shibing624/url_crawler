@@ -259,20 +259,90 @@ server {
 ### `GET /health`
 返回 `{ "status": "ok" }`，可用于健康检查。
 
-## Demo 客户端
-`demo.py` 提供了一个命令行示例，会直接调用 `/fetch` 接口并打印 JSON 结果：
+## 使用示例
+
+### curl 调用（推荐）
+
+**健康检查**：
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+**抓取单个 URL**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com"],
+    "timeout": 15.0
+  }'
+```
+
+**抓取多个 URL（并发）**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": [
+      "https://www.python.org",
+      "https://github.com",
+      "https://example.com"
+    ],
+    "timeout": 15.0,
+    "concurrency": 10
+  }'
+```
+
+**格式化输出（使用 jq）**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com"],
+    "timeout": 15.0
+  }' | jq .
+```
+
+**保存结果到文件**：
+```bash
+curl -X POST http://127.0.0.1:8000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com", "https://www.python.org"],
+    "timeout": 15.0
+  }' -o result.json
+```
+
+### Python 客户端
+
+`demo.py` 提供了一个命令行示例：
 ```bash
 python demo.py \
   --urls https://example.com https://www.python.org \
   --timeout 12 \
-  --endpoint http://127.0.0.1:8000/fetch
+  --concurrency 32
+```
+
+### Shell 脚本客户端（最简单）
+
+使用 `fetch.sh` 快速抓取：
+```bash
+# 抓取单个 URL
+./fetch.sh https://example.com
+
+# 抓取多个 URL
+./fetch.sh https://example.com https://www.python.org https://github.com
+
+# 自定义配置（通过环境变量）
+CRAWLER_TIMEOUT=20 CRAWLER_CONCURRENCY=20 ./fetch.sh https://example.com
 ```
 
 ## 目录结构
 ```
 url_crawler/
 ├── crawler.py           # FastAPI 主服务
-├── demo.py              # 示例客户端
+├── demo.py              # Python 客户端示例
+├── fetch.sh             # Shell 脚本客户端（推荐）
 ├── requirements.txt     # Python 依赖
 ├── gunicorn_config.py   # Gunicorn 配置文件
 ├── Dockerfile           # Docker 镜像构建文件
