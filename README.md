@@ -100,32 +100,6 @@ gunicorn -c gunicorn_config.py crawler:app
 
 #### 方案 3：Docker 容器化部署
 
-**创建 `Dockerfile`**：
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# 安装依赖
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 复制代码
-COPY crawler.py .
-
-# 暴露端口
-EXPOSE 8000
-
-# 启动服务（使用 Gunicorn + Uvicorn Workers）
-CMD ["gunicorn", "crawler:app", \
-     "--workers", "4", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "30", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
-```
-
 **构建镜像**：
 ```bash
 docker build -t url-crawler:latest .
@@ -234,7 +208,7 @@ server {
 
 **请求示例**：
 
-1. 基本用法（返回 Markdown + 纯文本）：
+1. 基本用法（返回 Markdown）：
   ```json
   {
     "urls": ["https://example.com", "https://www.python.org"],
